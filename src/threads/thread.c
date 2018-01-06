@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -92,6 +93,12 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  
+  // PROJECT OS
+  int i = 0;
+  for(i=0 ; i < 3; i++)
+    sema_init (&device_q[i], 5);
+
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -490,10 +497,59 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
+  struct thread * curr = running_thread();
+  int chosen_dev = 0;
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    
+    // PROJECT OS
+    // choose from devices in curr->devices[] which are needed,
+    // and have the smallest queue(sum_time in semaphore)
+    if(
+      curr->devices[0]
+      && !list_empty(&(device_q[0].waiters))
+      && device_q[0].sum_time < device_q[1].sum_time
+      && device_q[0].sum_time < device_q[2].sum_time
+      )
+    {
+      // get thread from device_q[0]
+      chosen_dev = 0;
+    }
+    else if (
+      curr->devices[1]
+      && !list_empty(&(device_q[1].waiters))
+      && device_q[1].sum_time < device_q[2].sum_time
+      )
+    {
+      // get from device_q[1];
+      chosen_dev = 1;
+    } 
+    else if(
+      curr->devices[2]
+      && !list_empty(&(device_q[1].waiters))
+      )
+    {
+      // get from device_q[2];
+      chosen_dev = 2;  
+    }
+    else
+      // if no devices were selected.
+      return list_entry (list_pop_front (&ready_list), struct thread, elem);
+
+    // if one of devices was selected
+    struct device_element* d = (list_entry // convert list entry to device_element
+                                (list_pop_front (&device_q[chosen_dev].waiters),
+                                struct device_element, 
+                                elem) // pop the last element from the chosen device_q
+                               );
+    struct thread * res = d->t;
+    
+    timer_msleep(d->time); 
+
+    sema_up(&device_q[chosen_dev]); // now pop this last element.
+    return res;
+
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -579,6 +635,7 @@ allocate_tid (void)
   return tid;
 }
 
+// PROJECT OS
 void thread_add_devices(int dev1, int dev2, int dev3)
 {
   struct thread* curr = running_thread();
@@ -586,7 +643,16 @@ void thread_add_devices(int dev1, int dev2, int dev3)
   curr->devices[1] = dev2;
   curr->devices[2] = dev3;
 }
+void thread_add_to_device_q(int dev, int time){
+  
+  struct device_element elem;
+  elem.t = running_thread();
+  elem.time = time;
 
+  device_q[dev].sum_time += time;
+  sema_down(&device_q[dev]);
+
+}
 
 
 /* Offset of `stack' member within `struct thread'.

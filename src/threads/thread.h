@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -23,6 +24,8 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+
 
 /* A kernel thread or user process.
 
@@ -100,6 +103,8 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+    
+    // PROJECT OS
     int devices[3];
   };
 
@@ -138,6 +143,19 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+// PROJECT OS
 void thread_add_devices(int, int, int);
+void thread_add_to_device_q(int, int);
+
+// PROJECT OS
+struct device_element {
+  struct list_elem elem;
+  struct thread * t;
+  int time;
+};
+
+struct semaphore device_q[3];
+
 
 #endif /* threads/thread.h */

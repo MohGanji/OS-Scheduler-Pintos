@@ -7,6 +7,8 @@
 /* A counting semaphore. */
 struct semaphore 
   {
+    // PROJECT OS
+    unsigned int sum_time;
     unsigned value;             /* Current value. */
     struct list waiters;        /* List of waiting threads. */
   };

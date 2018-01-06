@@ -1,8 +1,19 @@
+
 #include "userprog/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
+#include <user/syscall.h>
+#include "devices/input.h"
+#include "devices/shutdown.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
+#include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#include "userprog/process.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -10,9 +21,10 @@ static void syscall_handler (struct intr_frame *);
 
 void get_arg (struct intr_frame *f, int *arg, int n);
 
-void hello_logic(void);
+void hello_wrap(void);
 void io_need_wrap(int dev1, int dev2, int dev3);
 void io_request_wrap(int dev, int time);
+
 
 
 void
@@ -35,7 +47,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     }
     case SYS_HELLOWORLD:
     {
-    	hello_logic();
+    	hello_wrap();
     	break;
     }
     case SYS_IONEED:
@@ -59,7 +71,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 }
 
 
-void hello_logic(void){
+void hello_wrap(void){
 	printf("This is hello world sys call example :|\n");
 	return;
 }
@@ -72,8 +84,8 @@ void io_need_wrap(int dev1, int dev2, int dev3){
 }
 
 void io_request_wrap(int dev, int time){
-  
   printf("requested device %d for %d miliseconds\n", dev, time);
+  thread_add_to_device_q(dev, time);
 }
 
 void get_arg (struct intr_frame *f, int *arg, int n)
@@ -86,3 +98,5 @@ void get_arg (struct intr_frame *f, int *arg, int n)
       arg[i] = *ptr;
     }
 }
+
+
